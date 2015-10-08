@@ -1,0 +1,38 @@
+#!perl
+use strict;
+use Plack::Runner;
+
+sub version {
+    require Starman;
+    print "Starman $Starman::VERSION\n";
+}
+
+my $preload_app;
+
+require Getopt::Long;
+Getopt::Long::Configure("no_ignore_case", "no_auto_abbrev", "pass_through");
+Getopt::Long::GetOptions(
+    "preload-app"      => \$preload_app,
+);
+
+my @args = (server => 'Starman::ZooKeeper', env => 'deployment', version_cb => \&version);
+if (!$preload_app) {
+    push @args, 'loader' => 'Delayed';
+}
+
+my @argv = @ARGV;
+
+my $runner = Plack::Runner->new(@args);
+$runner->parse_options(@argv);
+
+if ($runner->{loader} eq 'Restarter') {
+    warn <<WARN;
+!!
+!! Using restarter with -r or -R options is known to cause issues with process supervisor
+!! such as start_server, and it is STRONGLY discouraged to use with Starman. You have been warned.
+!!
+WARN
+}
+
+$runner->set_options(argv => \@argv);
+$runner->run;
